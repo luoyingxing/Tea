@@ -1,5 +1,6 @@
 package com.lxx.tea;
 
+import android.content.Intent;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.Menu;
@@ -58,7 +59,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 Toast.makeText(getApplicationContext(), "bind_device_menu", Toast.LENGTH_SHORT).show();
                 break;
             case R.id.add_tea_menu:
-                Toast.makeText(getApplicationContext(), "add_tea_menu", Toast.LENGTH_SHORT).show();
+                Intent intent = new Intent(MainActivity.this, TeaListActivity.class);
+                startActivity(intent);
                 break;
         }
         return super.onOptionsItemSelected(item);

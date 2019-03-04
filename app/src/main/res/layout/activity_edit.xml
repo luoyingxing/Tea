@@ -5,7 +5,7 @@
     android:layout_height="match_parent">
 
     <ListView
-        android:id="@+id/lv_list"
+        android:id="@+id/lv_edit"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:divider="@color/white"
@@ -17,13 +17,23 @@
         app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
-        android:id="@+id/tv_list_add"
+        android:id="@+id/tv_edit_add"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginBottom="20dp"
-        android:text="添加茶品"
+        android:text="添加"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toLeftOf="@+id/tv_edit_delete" />
+
+    <TextView
+        android:id="@+id/tv_edit_delete"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="20dp"
+        android:text="删除"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintLeft_toRightOf="@+id/tv_edit_add"
         app:layout_constraintRight_toRightOf="parent" />
 
 </android.support.constraint.ConstraintLayout>

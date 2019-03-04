@@ -2,6 +2,7 @@ package com.lxx.tea;
 
 import android.app.AlertDialog;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
@@ -46,7 +47,11 @@ public class TeaListActivity extends AppCompatActivity {
                 holder.getView(R.id.iv_edit).setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-
+                        Intent intent = new Intent(TeaListActivity.this, EditActivity.class);
+                        Bundle bundle = new Bundle();
+                        bundle.putSerializable("tea", item);
+                        intent.putExtras(bundle);
+                        startActivity(intent);
                     }
                 });
 
@@ -61,6 +66,13 @@ public class TeaListActivity extends AppCompatActivity {
             }
         };
         listView.setAdapter(adapter);
+
+        findViewById(R.id.tv_list_add).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                add();
+            }
+        });
     }
 
     @Override
@@ -86,7 +98,7 @@ public class TeaListActivity extends AppCompatActivity {
 
     private void add() {
         final EditText editText = new EditText(this);
-        new AlertDialog.Builder(getApplicationContext())
+        new AlertDialog.Builder(TeaListActivity.this)
                 .setTitle("添加茶品")
                 .setView(editText)
                 .setNegativeButton("取消", new DialogInterface.OnClickListener() {
@@ -110,7 +122,8 @@ public class TeaListActivity extends AppCompatActivity {
                             load();
                         }
                     }
-                });
+                }).setCancelable(false)
+                .create().show();
     }
 
 

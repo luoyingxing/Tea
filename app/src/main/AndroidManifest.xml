@@ -21,6 +21,7 @@
         </activity>
 
         <activity android:name=".TeaListActivity" />
+        <activity android:name=".EditActivity" />
 
     </application>
 
