@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -20,6 +21,7 @@ import android.widget.Toast;
 import net.tsz.afinal.FinalDb;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
@@ -40,8 +42,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mStartTV = findViewById(R.id.tv_main_start);
         mResetTV = findViewById(R.id.tv_main_reset);
 
+        mTimesTV.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                //TODO  模拟
+                countdown();
+            }
+        });
+
         mStartTV.setOnClickListener(this);
         mResetTV.setOnClickListener(this);
+
+        timerList = new ArrayList<>();
 
         adapter = new SpAdapter(this, new ArrayList<Tea>());
         mSpinner.setAdapter(adapter);
@@ -49,7 +61,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 mTea = adapter.getItem(position);
+                timerList.clear();
 
+                String str = mTea.getTimes();
+                if (!TextUtils.isEmpty(str)) {
+                    String s[] = str.split(",");
+                    timerList.addAll(Arrays.asList(s));
+                }
+                resetTeaInfo();
             }
 
             @Override
@@ -61,6 +80,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private SpAdapter adapter;
     private Tea mTea;
+    private List<String> timerList;
+    private int position;
+    private int countdownTimer;
 
     private class SpAdapter extends BaseAdapter {
         private List<Tea> list;
@@ -113,8 +135,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     @Override
-    protected void onStart() {
-        super.onStart();
+    protected void onResume() {
+        super.onResume();
         getData();
     }
 
@@ -126,15 +148,82 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         adapter.addAll(list);
     }
 
+    private void resetTeaInfo() {
+        RxTimerUtils.cancel();
+
+        mTimesTV.setText("第1泡");
+        position = 0;
+
+        if (timerList == null || timerList.size() == 0) {
+            mTimerTV.setText("0");
+        } else {
+            mTimerTV.setText(timerList.get(0));
+        }
+
+        mStartTV.setVisibility(View.VISIBLE);
+    }
+
+    private boolean mReady;
+
     @Override
     public void onClick(View v) {
         switch (v.getId()) {
             case R.id.tv_main_start:
-                Toast.makeText(getApplicationContext(), "tv_main_start", Toast.LENGTH_SHORT).show();
+                mReady = true;
+                mStartTV.setVisibility(View.INVISIBLE);
+                sendReady();
                 break;
             case R.id.tv_main_reset:
-                Toast.makeText(getApplicationContext(), "tv_main_reset", Toast.LENGTH_SHORT).show();
+                mReady = false;
+                resetTeaInfo();
                 break;
+        }
+    }
+
+    /**
+     * 告诉硬件，准备好了，可以倒计时了
+     */
+    private void sendReady() {
+        //TODO
+    }
+
+    /**
+     * 告诉设备，准备下一泡
+     */
+    private void sendNext() {
+        //TODO
+    }
+
+    /**
+     * 硬件回调，告诉客户端，可以开始倒计时了
+     */
+    private void countdown() {
+        if (mReady) {
+            countdownTimer = Integer.parseInt(timerList.get(position));
+
+            RxTimerUtils.interval(1, new RxTimerUtils.IRxNext() {
+                @Override
+                public void doNext(long number) {
+                    if (countdownTimer == 0) {
+                        RxTimerUtils.cancel();
+
+                        if (position == timerList.size() - 1) {
+                            //最后一泡
+                            mTimesTV.setText("结束");
+                        } else {
+                            position++;
+                            sendNext();
+
+                            mTimesTV.setText("第" + (position + 1) + "泡");
+                            mTimerTV.setText(timerList.get(position));
+                        }
+                    } else {
+                        countdownTimer--;
+
+                        mTimerTV.setText("" + countdownTimer);
+                    }
+                }
+            });
         }
     }
 
