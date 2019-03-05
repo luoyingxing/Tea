@@ -31,6 +31,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private TextView mStartTV;
     private TextView mResetTV;
 
+    //自己生成的uuid
+    public static String uuidStr = "7d9272e4-820f-42e4-ba53-b8791bb31e95";
+    public static final int MESSAGE_READ = 100;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -238,7 +242,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case R.id.bind_device_menu:
-                Toast.makeText(getApplicationContext(), "bind_device_menu", Toast.LENGTH_SHORT).show();
+                Intent i = new Intent(MainActivity.this, BluetoothActivity.class);
+                startActivity(i);
                 break;
             case R.id.add_tea_menu:
                 Intent intent = new Intent(MainActivity.this, TeaListActivity.class);
