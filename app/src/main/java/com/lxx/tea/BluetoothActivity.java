@@ -1,14 +1,13 @@
 package com.lxx.tea;
 
 import android.Manifest;
-import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothSocket;
-import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
+import android.content.ServiceConnection;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
@@ -24,21 +23,26 @@ import com.lyx.frame.adapter.abs.CommonAdapter;
 import com.lyx.frame.permission.Permission;
 import com.lyx.frame.permission.PermissionManager;
 
-import java.lang.reflect.Method;
+import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
+import org.greenrobot.eventbus.ThreadMode;
+
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * author:  luoyingxing
  * date: 2019/3/5.
  */
-public class BluetoothActivity extends AppCompatActivity implements ConnectThread.ConnectCallBack, AcceptThread.AcceptCallBack {
+public class BluetoothActivity extends AppCompatActivity {
     private static final String TAG = "BluetoothActivity";
     private ListView listView;
     private TextView textView;
 
     private CommonAdapter<BluetoothDevice> adapter;
 
-    private BluetoothAdapter mBluetoothAdapter;
+    protected BluetoothService.ServiceBinder mServiceBinder;
+    private ServiceConnect serviceConnection;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -62,7 +66,7 @@ public class BluetoothActivity extends AppCompatActivity implements ConnectThrea
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                pin(position);
+                mServiceBinder.pin(adapter.getItem(position));
             }
         });
 
@@ -70,120 +74,70 @@ public class BluetoothActivity extends AppCompatActivity implements ConnectThrea
         findViewById(R.id.tv_bluetooth).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                permissionManager = new PermissionManager(BluetoothActivity.this);
-                permissionManager.addPermission(new Permission() {
-                    @Override
-                    public String getPermission() {
-                        return Manifest.permission.ACCESS_FINE_LOCATION;
-                    }
-
-                    @Override
-                    public void onApplyResult(boolean succeed) {
-                        if (succeed) {
-                            textView.setText("正在搜索...");
-                            openBlueTooth();
-                        } else {
-                            Toast.makeText(BluetoothActivity.this, "没有定位权限无法使用蓝牙功能！", Toast.LENGTH_LONG).show();
-                        }
-                    }
-                }).apply(BluetoothActivity.this);
             }
         });
-
-        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-
-        registerReceiver();
     }
 
-    private void openBlueTooth() {
-        if (mBluetoothAdapter == null) {
-            return;
-        }
-
-        if (!mBluetoothAdapter.isEnabled()) {
-            mBluetoothAdapter.enable();
-        }
-
-        mBluetoothAdapter.startDiscovery();
+    @Override
+    protected void onStart() {
+        super.onStart();
+        EventBus.getDefault().register(this);
     }
 
-    private void registerReceiver() {
-        //扫描蓝牙广播
-        IntentFilter filter1 = new IntentFilter(BluetoothAdapter.ACTION_DISCOVERY_STARTED);
-        IntentFilter filter2 = new IntentFilter(BluetoothDevice.ACTION_FOUND);
-        IntentFilter filter3 = new IntentFilter(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
-        //配对蓝牙广播
-        IntentFilter filter5 = new IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED);
-        //连接蓝牙广播
-        IntentFilter filter6 = new IntentFilter(BluetoothAdapter.ACTION_CONNECTION_STATE_CHANGED);
-
-        registerReceiver(receiver, filter1);
-        registerReceiver(receiver, filter2);
-        registerReceiver(receiver, filter3);
-        registerReceiver(receiver, filter5);
-        registerReceiver(receiver, filter6);
+    @Override
+    protected void onStop() {
+        super.onStop();
+        EventBus.getDefault().unregister(this);
+        unbindService(serviceConnection);
     }
 
-    private BroadcastReceiver receiver = new BroadcastReceiver() {
+    private class ServiceConnect implements ServiceConnection {
+
         @Override
-        public void onReceive(Context context, Intent intent) {
-            String action = intent.getAction();
-//            Log.i(TAG, "action = " + action);
-
-            switch (action) {
-                case BluetoothAdapter.ACTION_DISCOVERY_STARTED:
-                    textView.setText("开始扫描...");
-                    break;
-                case BluetoothDevice.ACTION_FOUND: {
-                    //发现蓝牙
-                    BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
-                    if (!TextUtils.isEmpty(device.getName())) {
-                        adapter.add(device);
-                    }
-                }
-                break;
-                case BluetoothAdapter.ACTION_DISCOVERY_FINISHED:
-                    textView.setText("扫描完成");
-                    break;
-                case BluetoothDevice.ACTION_BOND_STATE_CHANGED: {
-                    //配对状态变化广播
-                    BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
-                    switch (device.getBondState()) {
-                        case BluetoothDevice.BOND_NONE:
-                            textView.setText("配对失败");
-                            break;
-                        case BluetoothDevice.BOND_BONDING:
-                            textView.setText("配对中...");
-                            break;
-                        case BluetoothDevice.BOND_BONDED:
-                            textView.setText("配对成功");
-                            new ConnectThread(device, mBluetoothAdapter, BluetoothActivity.this).start();
-                            break;
-                    }
-                    break;
-                }
-                case BluetoothAdapter.ACTION_CONNECTION_STATE_CHANGED: {
-                    //连接状态变化广播
-                    BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
-                    switch (device.getBondState()) {
-                        case BluetoothAdapter.STATE_DISCONNECTED:
-                            textView.setText("未连接");
-                            Log.i(TAG, "--- 未连接 ---");
-                            break;
-                        case BluetoothAdapter.STATE_CONNECTING:
-                            textView.setText("连接中...");
-                            Log.i(TAG, "--- 连接中... ---");
-                            break;
-                        case BluetoothAdapter.STATE_CONNECTED:
-                            textView.setText("连接成功");
-                            Log.i(TAG, "--- 连接成功 ---");
-                            break;
-                    }
-                }
-                break;
-            }
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            Log.i(TAG, "onServiceConnected");
+            mServiceBinder = (BluetoothService.ServiceBinder) service;
         }
-    };
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            Log.e(TAG, "onServiceDisconnected");
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        permissionManager = new PermissionManager(BluetoothActivity.this);
+        permissionManager.addPermission(new Permission() {
+            @Override
+            public String getPermission() {
+                return Manifest.permission.ACCESS_FINE_LOCATION;
+            }
+
+            @Override
+            public void onApplyResult(boolean succeed) {
+                if (succeed) {
+                    if (mServiceBinder == null) {
+                        Intent intent = new Intent(BluetoothActivity.this, BluetoothService.class);
+                        serviceConnection = new ServiceConnect();
+                        bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
+                    }
+                } else {
+                    Toast.makeText(BluetoothActivity.this, "没有定位权限无法使用蓝牙功能！", Toast.LENGTH_LONG).show();
+                }
+            }
+        }).apply(BluetoothActivity.this);
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onEventMain(ScanFinish finish) {
+        List<BluetoothDevice> list = mServiceBinder.getBluetoothDeviceList();
+        if (null != list) {
+            adapter.clear();
+            adapter.addAll(list);
+        }
+    }
 
     private PermissionManager permissionManager;
 
@@ -193,43 +147,4 @@ public class BluetoothActivity extends AppCompatActivity implements ConnectThrea
         permissionManager.onPermissionsResult(requestCode, permissions, grantResults);
     }
 
-    /**
-     * 配对，配对结果通过广播返回
-     *
-     * @param position
-     */
-    public void pin(int position) {
-        BluetoothDevice device = adapter.getItem(position);
-
-        if (device == null || !mBluetoothAdapter.isEnabled()) {
-            return;
-        }
-
-        if (mBluetoothAdapter.isDiscovering()) {
-            mBluetoothAdapter.cancelDiscovery();
-        }
-
-        if (device.getBondState() == BluetoothDevice.BOND_NONE) {
-            try {
-                Method createBondMethod = device.getClass().getMethod("createBond");
-                Boolean result = (Boolean) createBondMethod.invoke(device);
-                Log.i(TAG, "连接状态:" + result);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-    private ConnectedThread connectedThread;
-
-    @Override
-    public void onConnectSucceed(BluetoothSocket serverSocket) {
-        connectedThread = new ConnectedThread(serverSocket, null);
-        connectedThread.start();
-    }
-
-    @Override
-    public void onAcceptSucceed(BluetoothSocket serverSocket) {
-        Log.i("onAcceptSucceed", "" + serverSocket.toString());
-    }
 }
