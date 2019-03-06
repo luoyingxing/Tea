@@ -13,13 +13,16 @@ import android.os.IBinder;
 import android.support.annotation.Nullable;
 import android.text.TextUtils;
 import android.util.Log;
+import android.widget.Toast;
 
 import org.greenrobot.eventbus.EventBus;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -89,8 +92,13 @@ public class BluetoothService extends Service {
                 break;
                 case BluetoothAdapter.ACTION_DISCOVERY_FINISHED:
                     Log.i(TAG, "扫描完成");
-
                     EventBus.getDefault().post(new ScanFinish());
+
+                    Set<BluetoothDevice> set = mBluetoothAdapter.getBondedDevices();
+                    for (BluetoothDevice device : set) {
+                        Log.w(TAG, "BondedDevices: " + device.getName() + "  " + device.getAddress() + "  " + device.getBondState());
+                    }
+
                     break;
                 case BluetoothDevice.ACTION_BOND_STATE_CHANGED: {
                     //配对状态变化广播
@@ -103,7 +111,7 @@ public class BluetoothService extends Service {
                             Log.i(TAG, "配对中...");
                             break;
                         case BluetoothDevice.BOND_BONDED:
-                            Log.i(TAG, "配对成功");
+                            Log.i(TAG, "配对成功: " + device.getName() + "  " + device.getAddress());
 //                            new ConnectThread(device, mBluetoothAdapter, BluetoothActivity.this).start();
                             break;
                     }
@@ -142,6 +150,18 @@ public class BluetoothService extends Service {
     }
 
     private BluetoothSocket socket;
+    private BluetoothSocket mBTSocket = null;
+    private static final UUID BTMODULEUUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
+
+    private BluetoothSocket createBluetoothSocket(BluetoothDevice device) throws IOException {
+        try {
+            final Method m = device.getClass().getMethod("createInsecureRfcommSocketToServiceRecord", UUID.class);
+            return (BluetoothSocket) m.invoke(device, BTMODULEUUID);
+        } catch (Exception e) {
+            Log.e(TAG, "Could not create Insecure RFComm Connection", e);
+        }
+        return device.createRfcommSocketToServiceRecord(BTMODULEUUID);
+    }
 
     public class ServiceBinder extends Binder {
         public List<BluetoothDevice> getBluetoothDeviceList() {
@@ -153,23 +173,57 @@ public class BluetoothService extends Service {
          *
          * @param device
          */
-        public void pin(BluetoothDevice device) {
+        public void pin(final BluetoothDevice device) {
+//            mBluetoothAdapter.enable();
+//
+//            if (device == null || !mBluetoothAdapter.isEnabled()) {
+//                return;
+//            }
+//
+//            mBluetoothAdapter.disable();
+//
+//            if (device.getBondState() == BluetoothDevice.BOND_NONE) {
+//                try {
+//                    Method createBondMethod = device.getClass().getMethod("createBond");
+//                    Boolean result = (Boolean) createBondMethod.invoke(device);
+//                    Log.i(TAG, "连接状态:" + result);
+//                } catch (Exception e) {
+//                    e.printStackTrace();
+//                }
+//            }
 
-            if (device == null || !mBluetoothAdapter.isEnabled()) {
-                return;
-            }
+//            new Thread(new Runnable() {
+//                @Override
+//                public void run() {
+//                    new ConnectThread(device, mBluetoothAdapter, new ConnectThread.ConnectCallBack() {
+//                        @Override
+//                        public void onConnectSucceed(BluetoothSocket serverSocket) {
+//                            Log.i(TAG, "连接状态onConnectSucceed:" + serverSocket.isConnected());
+//                        }
+//                    }).run();
+//                }
+//            }).start();
 
-                mBluetoothAdapter.disable();
 
-            if (device.getBondState() == BluetoothDevice.BOND_NONE) {
-                try {
-                    Method createBondMethod = device.getClass().getMethod("createBond");
-                    Boolean result = (Boolean) createBondMethod.invoke(device);
-                    Log.i(TAG, "连接状态:" + result);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
+//            new Thread(new Runnable() {
+//                @Override
+//                public void run() {
+//                    try {
+//                        BluetoothSocket mBluetoothSocket = device.createRfcommSocketToServiceRecord(UUID.fromString("00001101-0000-1000-8000-00805F9B34FB"));
+//                        mBluetoothSocket.connect();
+//
+//                        OutputStream out = mBluetoothSocket.getOutputStream();
+//
+//                        out.write(8);
+//                        out.flush();
+//
+//
+//                    } catch (IOException e) {
+//                        e.printStackTrace();
+//                    }
+//
+//                }
+//            }).start();
         }
 
 
@@ -178,9 +232,9 @@ public class BluetoothService extends Service {
                 @Override
                 public void run() {
                     try {
-                           if (mBluetoothAdapter.isDiscovering()) {
-            mBluetoothAdapter.cancelDiscovery();
-        }
+                        if (mBluetoothAdapter.isDiscovering()) {
+                            mBluetoothAdapter.cancelDiscovery();
+                        }
 //                        mBluetoothAdapter.stopLeScan(new BluetoothAdapter.LeScanCallback() {
 //                            @Override
 //                            public void onLeScan(BluetoothDevice device, int rssi, byte[] scanRecord) {

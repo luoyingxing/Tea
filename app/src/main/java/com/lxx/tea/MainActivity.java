@@ -32,7 +32,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private TextView mResetTV;
 
     //自己生成的uuid
-    public static String uuidStr = "7d9272e4-820f-42e4-ba53-b8791bb31e95";
+    public static String uuidStr = "00001101-0000-1000-8000-00805F9B34FB";
     public static final int MESSAGE_READ = 100;
 
     @Override
